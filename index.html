@@ -1,0 +1,198 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>Micronaut PubSub support</title>
+
+		<link rel="stylesheet" href="dist/reset.css">
+		<link rel="stylesheet" href="dist/reveal.css">
+		<link rel="stylesheet" href="dist/theme/simple.css" id="theme">
+		<link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet">
+ 		<link href="https://unpkg.com/nes.css/css/nes.css" rel="stylesheet" />
+		<!-- Theme used for syntax highlighted code -->
+		<link rel="stylesheet" href="plugin/highlight/monokai.css" id="highlight-theme">
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section>
+					<div class="nes-container is-dark with-title" style="text-align: center">
+   					<div style="font-family: 'Press Start 2P';font-size: 22px;">
+       				Micronaut <i class="nes-icon is-large heart"></i> Google Cloud
+   					</div>
+					</div>
+				</section>
+				<section>
+					<ul>
+						<li>To publish a message create a client interface with annotations</li>
+					</ul>
+						<pre class="java">
+							<code data-trim data-noescape>
+@PubSubClient
+public interface AnimalPublisher {
+  @Topic("animals")
+  void publish(Animal animal);
+}
+						</code>
+						</pre>
+				</section>
+				<section>
+					<ul>
+						<li>Add headers ...</li>
+					</ul>
+						<pre class="java">
+							<code data-trim data-noescape>
+
+@PubSubClient
+//These headers will be include in all messages of this client
+@Headers(  @Header(name = "x-client-type", value = "test")  )
+public interface AnimalPublisher {
+
+@Topic("animals")
+@Header(name="custom-header", value="foo")
+void publishWithStaticHeaders(Animal animal);
+
+@Topic("animals")
+void publishWithDynamicHeaders(Animal animal,
+                        @Header("custom-header") String value);
+@Topic("animals")
+void publishWithHeaderMap(Animal animal,
+                   @Headers Map&lt;String, String&gt; headers);
+
+}
+
+						</code>
+						</pre>
+				</section>
+				<section>
+					<ul>
+						<li>Control Serialization</li>
+					</ul>
+					<pre class="java">
+						  <code data-trim data-noescape>
+@PubSubClient
+public interface AnimalPublisher {
+
+  //Bypass SerDes
+  @Topic("animals")
+  void publishRaw(byte[] data);
+
+  //Also bypass SerDes
+  @Topic("animals")
+  void publish(PubSubMessage message);
+
+  //Default Content-Type: application/json
+  @Topic("animals")
+  void publish(Animal animal);
+
+  //Will use a SerDes registered to handle this MIME type
+  @Topic("animals", contentType="custom/myType")
+  void publishCustom(Animal animal);
+}
+							</code>
+					</pre>
+				</section>
+				<section>
+					<ul>
+						<li> Blocking / Reactive support </li>
+					</ul>
+					<pre class="java">
+						<code data-trim data-noescape>
+@PubSubClient
+public interface AnimalPublisher {
+ //Blocking send, ignores publishing message id
+ @Topic("animals")
+ void publish(Animal animal);
+
+ //Blocking send, returns message id
+ @Topic("animals")
+ String publish(Animal animal);
+
+ //Reactive publish
+ @Topic("animals")
+ Publisher&lt;String&gt; publish(Animal animal);
+
+}
+						</code>
+					</pre>
+				</section>
+				<section>
+					<ul>
+						<li>Messages can be consumed via @PubSubListener</li>
+						<li>Unlike Producers, message consumers do not have default contentType</li>
+						<li>If a Content-Type header is not present the framework can't deserialize the data</li>
+					<ul>
+				</section>
+				<section>
+					<ul>
+						<li>A subscription must already exist on GCP with the name provided</li>
+						<li>Only one method is allowed per subscription</li>
+					</ul>
+					<pre class="java">
+						<code data-trim data-noescape>
+@PubSubListener
+public class AnimalMessageListener {
+
+  //Relies on message having the correct contentType header
+  //or an error is thrown
+  @Subscription("animals")
+  void onMessage(Animal animal){
+  }
+
+  //Messages do not have header, explicitily set contentType
+  @Subscription("animals-raw", contentType = "application/json")
+  void onMessage(Animal animal){
+  }
+}
+						</code>
+					</pre>
+				</section>
+				<section>
+					<ul>
+						<li>Acknowledgement control</li>
+						<li>If not specified, messages will be acked when method completes without exception</li>
+						<li>Manual ack is supported by using @Acknowledgement annotation</li>
+					</ul>
+					<pre class="java">
+						<code data-trim data-noescape>
+@PubSubListener
+public class AnimalMessageListener {
+
+  //Message with be acked when method completes successfully
+  @Subscription("animals")
+  void onMessage(Animal animal){
+  }
+
+  @Subscription("manualAck")
+  //Manual ack. Failing to ack message results in redeliver
+  void onMessage(Animal animal,
+	@Acknowledgement PubSubAcknowledgement consumer){
+   consumer.ack();
+  }
+}
+						</code>
+					</pre>
+				</section>
+			</div>
+		</div>
+
+
+		<script src="dist/reveal.js"></script>
+		<script src="plugin/notes/notes.js"></script>
+		<script src="plugin/markdown/markdown.js"></script>
+		<script src="plugin/highlight/highlight.js"></script>
+		<script>
+			// More info about initialization & config:
+			// - https://revealjs.com/initialization/
+			// - https://revealjs.com/config/
+			Reveal.initialize({
+				hash: true,
+
+				// Learn about plugins: https://revealjs.com/plugins/
+				plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ]
+			});
+		</script>
+	</body>
+</html>
