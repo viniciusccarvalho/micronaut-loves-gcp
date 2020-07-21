@@ -26,6 +26,18 @@
 				</section>
 				<section>
 					<ul>
+						<li>Add it to existing micronaut project</li>
+						<li>Follow <a href="https://micronaut-projects.github.io/micronaut-gcp/2.0.x/guide/#setup" target="_blank">GCP common</a> instructions for micronaut</li>
+					</ul>
+					<pre class="shell">
+						
+						<code>
+implementation("io.micronaut.gcp:micronaut-gcp-pubsub:2.0.0")
+						</code>
+					</pre>
+				</section>
+				<section>
+					<ul>
 						<li>To publish a message create a client interface with annotations</li>
 					</ul>
 						<pre class="java">
@@ -34,6 +46,10 @@
 public interface AnimalPublisher {
   @Topic("animals")
   void publish(Animal animal);
+
+  //If multiple parameters are present use @Body classifier
+  @Topic("animals")
+  void publish(@Body Animal animal, String family);
 }
 						</code>
 						</pre>
@@ -50,15 +66,15 @@ public interface AnimalPublisher {
 @Headers(  @Header(name = "x-client-type", value = "test")  )
 public interface AnimalPublisher {
 
-@Topic("animals")
-@Header(name="custom-header", value="foo")
-void publishWithStaticHeaders(Animal animal);
+  @Topic("animals")
+  @Header(name="custom-header", value="foo")
+  void publishWithStaticHeaders(Animal animal);
 
-@Topic("animals")
-void publishWithDynamicHeaders(Animal animal,
+  @Topic("animals")
+  void publishWithDynamicHeaders(Animal animal,
                         @Header("custom-header") String value);
-@Topic("animals")
-void publishWithHeaderMap(Animal animal,
+  @Topic("animals")
+  void publishWithHeaderMap(Animal animal,
                    @Headers Map&lt;String, String&gt; headers);
 
 }
@@ -164,7 +180,6 @@ public class AnimalMessageListener {
   @Subscription("animals")
   void onMessage(Animal animal){
   }
-
   @Subscription("manualAck")
   //Manual ack. Failing to ack message results in redeliver
   void onMessage(Animal animal,
@@ -175,6 +190,35 @@ public class AnimalMessageListener {
 						</code>
 					</pre>
 				</section>
+				<section>
+					<ul>
+						<li>Handling consumer errors</li>
+						<li>A Default ExceptionHandler handles any exceptions thrown during message consumption,
+							uncaught method exceptions, or serialization related errors</li>
+						<li>Default handler only logs messages, won't ack any of the messages</li>
+					</ul>
+				</section>
+				<section>
+					<ul>
+						<li>If a listener implements PubSubMessageReceiverExceptionHandler then errors will be dispatched to it </li>
+					</ul>
+					<pre class="java">
+						<code data-trim data-noescape>
+@PubSubListener
+public class AnimalMessageListener implements PubSubMessageReceiverExceptionHandler {
+  @Subscription("animals")
+  void onMessage(Animal animal){
+  }
+
+  public void handle(PubSubMessageReceiverException e) {
+    //Handle error, nack message, log ...
+    //e.getState() has information on subscription name,
+    //PubSubMessage, AckReplyConsumer, contentType
+  }
+}
+						</code>
+					</pre>
+				<section>
 			</div>
 		</div>
 
